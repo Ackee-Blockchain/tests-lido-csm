@@ -14,7 +14,7 @@ from .fork_data import *
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def revert_handler(e: TransactionRevertedError):
+def revert_handler(e: RevertError):
     if e.tx is not None:
         print(e.tx.call_trace)
 
@@ -82,6 +82,9 @@ def deploy_node_operator_registry(lib: Account, no_manager: Account, no_limiter:
     else:
         nor_impl = NodeOperatorsRegistryMigrated.deploy()
 
+    kernel_implementation = Account("0x2b33CF282f867A7FF693A66e11B0FcC5552e4425")
+    kernel_implementation.pytypes_resolver = Kernel
+    nor_impl.pytypes_resolver = NodeOperatorsRegistryMigrated
     tx = LIDO_DAO.newAppInstance_(app_id, nor_impl, b'', False, from_=ARAGON_VOTING)
     e = next((e for e in tx.events if isinstance(e, Kernel.NewAppProxy)), None)
     assert e is not None, "Expected event does not exist"

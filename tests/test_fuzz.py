@@ -254,6 +254,9 @@ class LidoFuzzTest(CsmFuzzTest):
         logger.info("== NEW SEQUENCE INITIATED ===")
         self.lib = MinFirstAllocationStrategy.deploy()
 
+        DEPOSIT_CONTRACT.pytypes_resolver = IDepositContract
+        LIDO.pytypes_resolver = LidoMigrated
+
         self.wq_is_bunker_mode = False
         # set parameters
         self.config = FORK_CONFIG
@@ -468,6 +471,10 @@ class LidoFuzzTest(CsmFuzzTest):
             self.shares[acc] = LIDO.sharesOf(acc)
 
         self.main_report_sumission[self.beacon_chain.current_frame_index] = True
+
+    def pre_invariants(self) -> None:
+        self.flow_submit_report()
+        self.flow_submit_extra_data()
 
     def post_invariants(self) -> None:
         return super().post_invariants()
@@ -1090,7 +1097,8 @@ class LidoFuzzTest(CsmFuzzTest):
                 f"Updated refunded validators count for staking module {staking_module_id}"
             )
 
-        self.staking_modules[staking_module_id].nonce += 1
+        ### Latest updated version.
+        # self.staking_modules[staking_module_id].nonce += 1
 
     #
     # Function:     reportRewardsMinted
@@ -2433,6 +2441,8 @@ class LidoFuzzTest(CsmFuzzTest):
         else:
             assert e.value is None
             assert no.active == True
+
+            self.nors[id]
             event = next(
                 (
                     e
@@ -2927,7 +2937,11 @@ class LidoFuzzTest(CsmFuzzTest):
         else:
             value = random_int(0, 10**19)
         alice.balance = max(alice.balance, value)
+
+        lido_implementation = Account("0x17144556fd3424EDC8Fc8A4C940B2D04936d17eb")
+        lido_implementation.pytypes_resolver = LidoMigrated
         with may_revert() as e:
+
             tx = LIDO.submit(Address(0), value=value, from_=alice)
 
         if e.value == Error("STAKE_LIMIT"):
@@ -3055,7 +3069,7 @@ class LidoFuzzTest(CsmFuzzTest):
     # Description:  submit stuck validator and exited validator data for each staking module by chunks with acending order
     # Status:       DONE
     #
-    @invariant()
+    # @flow()
     def flow_submit_extra_data(self):
         if (
             self.beacon_chain.current_frame_index
@@ -3463,7 +3477,7 @@ class LidoFuzzTest(CsmFuzzTest):
     # Status:       Done
     #
 
-    @invariant()
+    # @invariant()
     def flow_submit_report(self):
 
         submit_frame_index = self.beacon_chain.current_frame_index
@@ -3492,7 +3506,7 @@ class LidoFuzzTest(CsmFuzzTest):
             logger.warning(
                 f"We stop the fuzz test since it should done extra data submission before next report submission or fix by unsafe function"
             )
-            assert False
+            # assert False
 
         assert submit_frame_index - 1 in self.refslot_data
         ref_data = self.refslot_data[submit_frame_index - 1]

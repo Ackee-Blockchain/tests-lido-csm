@@ -271,15 +271,19 @@ class CsmFuzzTest(FuzzTest):
         bond_lock_retention_period = MIN_BOND_LOCK_RETENTION_PERIOD
         admin = random_account()
 
+        csmodule_impl = CSModule.deploy(
+            MODULE_TYPE,
+            MIN_SLASHING_PENALTY_QUOTIENT,
+            EL_REWARDS_STEALING_FINE,
+            MAX_KEYS_PER_OPERATOR_EA,
+            MAX_KEY_REMOVAL_CHARGE,
+            LIDO_LOCATOR,
+        )
+        csmodule_impl.pytypes_resolver = CSModule
+
+
         module = CSModule(OssifiableProxy.deploy(
-            CSModule.deploy(
-                MODULE_TYPE,
-                MIN_SLASHING_PENALTY_QUOTIENT,
-                EL_REWARDS_STEALING_FINE,
-                MAX_KEYS_PER_OPERATOR_EA,
-                MAX_KEY_REMOVAL_CHARGE,
-                LIDO_LOCATOR,
-            ),
+            csmodule_impl,
             admin,
             b"",
         ))
@@ -304,23 +308,30 @@ class CsmFuzzTest(FuzzTest):
         hash_consenus.grantRole(hash_consenus.MANAGE_MEMBERS_AND_QUORUM_ROLE(), admin, from_=admin)
         initial_epoch = timestamp_to_epoch(chain.blocks["pending"].timestamp)
         hash_consenus.updateInitialEpoch(initial_epoch, from_=admin)
+
+        csaccounting_impl = CSAccounting.deploy(
+            LIDO_LOCATOR,
+            module,
+            MAX_CURVE_LENGTH,
+            MIN_BOND_LOCK_RETENTION_PERIOD,
+            MAX_BOND_LOCK_RETENTION_PERIOD,
+        )
+        csaccounting_impl.pytypes_resolver = CSAccounting
         accounting = CSAccounting(OssifiableProxy.deploy(
-            CSAccounting.deploy(
-                LIDO_LOCATOR,
-                module,
-                MAX_CURVE_LENGTH,
-                MIN_BOND_LOCK_RETENTION_PERIOD,
-                MAX_BOND_LOCK_RETENTION_PERIOD,
-            ),
+            csaccounting_impl,
             admin,
             b"",
         ))
+
+        fee_distributor_impl = CSFeeDistributor.deploy(
+            ST_ETH,
+            accounting,
+            fee_oracle,
+        )
+        fee_distributor_impl.pytypes_resolver = CSFeeDistributor
+
         fee_distributor = CSFeeDistributor(OssifiableProxy.deploy(
-            CSFeeDistributor.deploy(
-                ST_ETH,
-                accounting,
-                fee_oracle,
-            ),
+            fee_distributor_impl,
             admin,
             b"",
         ))
